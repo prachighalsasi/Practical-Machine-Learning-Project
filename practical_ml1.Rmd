@@ -1,0 +1,79 @@
+---
+title: "Practical Machine Learning Peoject"
+author: "Prachi Ghalsasi"
+date: "02/06/2020"
+output: html_document
+---
+
+BACKGROUND:
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+OBJECTIVE:
+The project aims to study how to preprocess data and form a machine learning model to predict data. In this project, we use data from given links at coursera.org and use csv reader to read the data.
+
+IMPORTING DATASET:
+```{r}
+library(caret); 
+library(randomForest); 
+library(rpart)
+
+url.train <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url.test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training <- read.csv(url(url.train), na.strings = c("NA", "", "#DIV0!"))
+testing <- read.csv(url(url.test), na.strings = c("NA", "", "#DIV0!"))
+```
+
+We verify whether the columns in the dataset match:
+```{r}
+sameColumsName <- colnames(training) == colnames(testing)
+colnames(training)[sameColumsName==FALSE]
+```
+
+CLEANING THE DATASET:
+
+There are numerous columns in the dataset with missing values, so we remove these columns. The first 7 columns are not informative wrt the prediction, thus we remove them as well:
+```{r}
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+
+training <- training[,8:dim(training)[2]]
+testing <- testing[,8:dim(testing)[2]]
+```
+
+SPLITTING DATASET:
+
+We split the training set into training and validation set for cross validation:
+```{r}
+set.seed(12345)
+inTrain <- createDataPartition(training$classe, p=0.6, list=FALSE)
+training_set <- training[inTrain,]
+validation_set <- training[-inTrain,]
+```
+
+TRAINING THE MODEL:
+
+The linear model fails as the weights for different parameters varies in the decision. 
+Thus, we use Ranom Forest. It averages out multiple trees and thus has a better chance of greater accuracy:
+
+```{r}
+modelRF <- randomForest(factor(classe) ~ ., data=training_set, method="class")
+modelRF
+```
+
+To get out- sample error, we use the validation set: 
+```{r}
+predictionRF <- predict(modelRF, validation_set, type="class")
+RF <- confusionMatrix(predictionRF, factor(validation_set$classe))
+RF
+```
+
+Out sample error rate is error on anew data set(here, validation set).
+error rate is 1-accuracy which is 0.0052.
+
+Now, let's get the final predictions on the test set:
+```{r}
+FinalPrediction <- predict(modelRF, testing)
+print(FinalPrediction)
+
+```
